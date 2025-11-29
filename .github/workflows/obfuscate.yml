@@ -107,55 +107,7 @@ jobs:
           cp /tmp/remote_worker.js source.js
           echo "✅ source.js 保存成功"
 
-      - name: 🔧 代码混淆与压缩
-        if: env.UPDATE_NEEDED == 'true'
-        run: |
-          echo "🔧 $(date '+%Y-%m-%d %H:%M:%S') - 开始代码混淆与压缩..."
-
-          # Step 1: terser 预压缩
-          echo "🛠️ 使用 terser 初步压缩..."
-          terser /tmp/remote_worker.js --compress --mangle --output /tmp/min_worker.js
-
-          # Step 2: javascript-obfuscator 混淆（方案2）
-          echo "🧩 使用 javascript-obfuscator 混淆..."
-          # javascript-obfuscator 混淆（已修正选项名）
-          javascript-obfuscator /tmp/min_worker.js --output _worker.js --compact true \
-            --control-flow-flattening true \
-            --control-flow-flattening-threshold 0.75 \
-            --dead-code-injection true \
-            --dead-code-injection-threshold 0.4 \
-            --disable-console-output true \
-            --identifier-names-generator hexadecimal \
-            --string-array true \
-            --string-array-encoding rc4 \
-            --string-array-threshold 0.8 \
-            --string-array-rotate true \
-            --string-array-shuffle true \
-            --transform-object-keys true
-
-
-          # Step 3: 检查结果
-          if [[ -f "_worker.js" ]]; then
-            COMPRESSED_SIZE=$(stat -c%s _worker.js 2>/dev/null || stat -f%z _worker.js 2>/dev/null)
-            echo "📏 混淆后大小: $COMPRESSED_SIZE 字节"
-          else
-            echo "❌ 混淆失败，使用原始文件"
-            cp /tmp/remote_worker.js _worker.js
-          fi
-
-          # Step 4: 体积与比例报告
-          FINAL_SIZE=$(stat -c%s _worker.js 2>/dev/null || stat -f%z _worker.js 2>/dev/null)
-          ORIGINAL_SIZE=$(stat -c%s source.js 2>/dev/null || stat -f%z source.js 2>/dev/null)
-          COMPRESSION_RATIO=$(( (FINAL_SIZE * 100) / ORIGINAL_SIZE ))
-          
-          echo "📊 压缩报告:"
-          echo "   • 原始大小: $ORIGINAL_SIZE 字节"
-          echo "   • 混淆后大小: $FINAL_SIZE 字节"
-          echo "   • 变化比例: $COMPRESSION_RATIO%"
-
-          if [[ $FINAL_SIZE -gt 1048576 ]]; then
-            echo "⚠️ 警告：文件超过 1MB，可能影响 Cloudflare 部署"
-          fi
+      
 
       - name: 📝 提交更改
         if: env.UPDATE_NEEDED == 'true'

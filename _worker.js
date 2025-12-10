@@ -32,6 +32,12 @@
     let kvStore = null;
     let kvConfig = {};
 
+addEventListener('fetch', event => {
+  console.log('Request received:', event.request.url);
+  event.respondWith(fetch(event.request));
+});
+
+
     const regionMapping = {
         'US': ['🇺🇸 美国', 'US', 'United States'],
         'SG': ['🇸🇬 新加坡', 'SG', 'Singapore'],

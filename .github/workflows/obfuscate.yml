@@ -114,19 +114,39 @@ jobs:
           echo "========== 远程 README.md 下载 =========="
           RAW_README_URL="https://raw.githubusercontent.com/byJoey/cfnew/refs/heads/main/README.md"
           
-          curl -f -s -L \
-            -H "Cache-Control: no-cache" \
-            -o /tmp/README.md "$RAW_URL" || { echo "❌ README下载失败，但继续执行"; }
-            cp /tmp/README.md .
+          # 初始化状态
+          echo "README_DOWNLOADED=false" >> $GITHUB_ENV
           
-          README_SIZE=$(wc -c < /tmp/README.md 2>/dev/null || echo 0)
-          if [[ $README_SIZE -gt 100 ]]; then
-            echo "✅ README.md 下载成功，大小: $README_SIZE 字节"
-            echo "README_DOWNLOADED=true" >> $GITHUB_ENV
-          else
-            echo "❌ README.md 下载失败或过小"
-            echo "README_DOWNLOADED=false" >> $GITHUB_ENV
-          fi
+          # 带重试的下载逻辑，修复变量名错误 + 错误处理
+          for i in {1..3}; do
+            echo "🔁 第 $i 次尝试下载 README.md..."
+            if curl -f -s -L \
+              -H "Cache-Control: no-cache" \
+              -o /tmp/README.md "$RAW_README_URL"; then
+              # 下载成功，校验文件大小
+              README_SIZE=$(wc -c < /tmp/README.md 2>/dev/null || echo 0)
+              if [[ $README_SIZE -gt 100 ]]; then
+                # 校验通过，复制文件
+                cp /tmp/README.md .
+                echo "✅ README.md 下载成功，大小: $README_SIZE 字节"
+                echo "README_DOWNLOADED=true" >> $GITHUB_ENV
+                break
+              else
+                echo "⚠️ README.md 文件过小 ($README_SIZE 字节)，重试..."
+                rm -f /tmp/README.md
+              fi
+            else
+              echo "⚠️ 第 $i 次下载失败，重试..."
+              rm -f /tmp/README.md
+            fi
+            
+            if [[ $i -eq 3 ]]; then
+              echo "❌ README.md 下载失败，跳过该文件，继续执行流程"
+              rm -f /tmp/README.md
+              break
+            fi
+            sleep 3
+          done
 
       - name: ⬇️ 下载原始文件
         if: env.UPDATE_NEEDED == 'true'
